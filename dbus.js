@@ -8,8 +8,9 @@ const interfaceName = service;
 
 const objectPath = `/${service.replace(/\./g, '/')}`;
 let currentConfig;
-let configPath;
 let callback;
+let iface;
+
 
 sessionBus.requestName(service, 0x4, (err, retCode) => {
 
@@ -44,11 +45,16 @@ function proceed() {
         methods: {
             GetConfig: ['', 's', [], 'running_config'],
             SetConfig: ['s', 's', ['new_config'], ['action_result']],
-            ReloadConfig: ['', '', [], []]
+            ReloadConfig: ['', '', [], []],
+            GetDeckInfo: ['', 's', [], []],
+            SetPage: ['s', 's', ['new_page'], ['action_result']]
+        },
+        signals: {
+            Page: ['i', 'page_number']
         }
     };
 
-    var iface = {
+    iface = {
         /**
          * @return {string}
          */
@@ -58,7 +64,7 @@ function proceed() {
             return JSON.stringify(currentConfig);
         },
         SetConfig: function (newConfig) {
-            let status = callback(newConfig);
+            let status = callback("update-config", newConfig);
             if (status === 0) {
                 currentConfig = JSON.parse(newConfig);
                 return "SUCCESS";
@@ -67,9 +73,13 @@ function proceed() {
             }
         },
         ReloadConfig: function() {
-            let config = fs.readFileSync(configPath);
-            currentConfig = JSON.parse(config);
-            callback(config);
+            callback("reload-config");
+        },
+        GetDeckInfo: function() {
+            return JSON.stringify(callback("get-details"));
+        },
+        SetPage: function(page) {
+            return callback("set-page", parseInt(page)) === 0 ? "SUCCESS" : "ERROR";
         },
         emit: function () {
 
@@ -82,8 +92,11 @@ function proceed() {
 }
 
 
-module.exports = function (config, path, cback) {
+module.exports.init = (config, cback) => {
     currentConfig = config;
-    configPath = path;
     callback = cback;
+};
+
+module.exports.updatePage = (page) => {
+    iface.emit('Page', page);
 };

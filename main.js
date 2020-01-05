@@ -18,14 +18,31 @@ let config = JSON.parse(fs.readFileSync(configPath));
 
 let rawConfig = JSON.parse(JSON.stringify(config));
 
-dbus(rawConfig, configPath, (newConfig) => {
-    console.log(newConfig);
-    config = JSON.parse(newConfig);
-    currentPage = config[0];
-    init().then(() => {
-        renderCurrentPage(currentPage);
-    });
-    return 0;
+dbus.init(rawConfig, (command, arg) => {
+    switch (command) {
+        case "update-config":
+            config = JSON.parse(arg);
+            currentPage = config[0];
+            init().then(() => {
+                renderCurrentPage(currentPage);
+            });
+            return 0;
+        case "reload-config":
+            config = JSON.parse(fs.readFileSync(configPath));
+            currentPage = config[0];
+            init().then(() => {
+                renderCurrentPage(currentPage);
+            });
+            return 0;
+        case "get-details":
+            return {icon_size: myStreamDeck.ICON_SIZE, rows: myStreamDeck.KEY_ROWS, cols: myStreamDeck.KEY_COLUMNS};
+        case "set-page":
+            currentPage = config[arg];
+            renderCurrentPage(currentPage);
+            return 0;
+        default:
+            return;
+    }
 });
 
 let currentPage = config[0];
@@ -120,6 +137,7 @@ function registerEventListeners(myStreamDeck) {
         if (keyPressed.hasOwnProperty("switch_page") && keyPressed.switch_page != null && keyPressed.switch_page > 0) {
             currentPage = config[keyPressed.switch_page - 1];
             renderCurrentPage(currentPage);
+            dbus.updatePage(keyPressed.switch_page - 1);
         } else if (keyPressed.hasOwnProperty("command") && keyPressed.command != null && keyPressed.command !== "") {
             exec(keyPressed.command);
         } else if (keyPressed.hasOwnProperty("keybind") && keyPressed.keybind != null && keyPressed.keybind !== "") {
