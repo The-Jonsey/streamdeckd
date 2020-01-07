@@ -6,7 +6,8 @@ const fs = require('fs');
 const StreamDeck = require('elgato-stream-deck');
 const exec = require('child_process').exec;
 const homeDir = require('os').homedir();
-console.log(StreamDeck);
+
+process.title = "streamdeckd";
 
 connected = false;
 

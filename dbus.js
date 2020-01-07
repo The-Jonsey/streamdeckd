@@ -1,6 +1,4 @@
 const dbus = require("dbus-native");
-const fs = require("fs");
-
 const sessionBus = dbus.sessionBus();
 
 const service = 'com.thejonsey.streamdeck';
@@ -22,7 +20,6 @@ sessionBus.requestName(service, 0x4, (err, retCode) => {
 
     // Return code 0x1 means we successfully had the name
     if (retCode === 1) {
-        console.log(`Successfully requested service name "${service}"!`);
         proceed();
     } else {
         /* Other return codes means various errors, check here
@@ -59,8 +56,6 @@ function proceed() {
          * @return {string}
          */
         GetConfig: function () {
-            console.log("GetConfig called");
-            console.log(currentConfig);
             return JSON.stringify(currentConfig);
         },
         SetConfig: function (newConfig) {
@@ -87,8 +82,6 @@ function proceed() {
     };
 
     sessionBus.exportInterface(iface, objectPath, ifaceDesc);
-
-    console.log("Interface exposed to DBus");
 }
 
 

@@ -2,10 +2,14 @@
   "name": "untitled",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node main.js"
   },
+  "bin": {
+    "streamdeckd": "./daemon.js"
+  },
+  "preferGlobal": true,
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -13,6 +17,7 @@
     "daemonize-process": "^2.0.1",
     "dbus-native": "^0.4.0",
     "elgato-stream-deck": "^3.2.0",
+    "ps-node": "^0.1.6",
     "sharp": "^0.23.4",
     "text-to-image": "^2.1.1"
   }
