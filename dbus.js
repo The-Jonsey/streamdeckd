@@ -44,7 +44,8 @@ function proceed() {
             SetConfig: ['s', 's', ['new_config'], ['action_result']],
             ReloadConfig: ['', '', [], []],
             GetDeckInfo: ['', 's', [], []],
-            SetPage: ['s', 's', ['new_page'], ['action_result']]
+            SetPage: ['s', 's', ['new_page'], ['action_result']],
+            CommitConfig: ['', 's', [], ['action_result']]
         },
         signals: {
             Page: ['i', 'page_number']
@@ -68,13 +69,16 @@ function proceed() {
             }
         },
         ReloadConfig: function() {
-            callback("reload-config");
+            currentConfig = callback("reload-config");
         },
         GetDeckInfo: function() {
             return JSON.stringify(callback("get-details"));
         },
         SetPage: function(page) {
             return callback("set-page", parseInt(page)) === 0 ? "SUCCESS" : "ERROR";
+        },
+        CommitConfig: function() {
+            return callback("commit-config") === 0 ? "SUCCESS" : "ERROR";
         },
         emit: function () {
 

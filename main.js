@@ -9,7 +9,7 @@ const homeDir = require('os').homedir();
 
 process.title = "streamdeckd";
 
-connected = false;
+let connected = false;
 
 let myStreamDeck;
 
@@ -34,12 +34,15 @@ dbus.init(rawConfig, (command, arg) => {
             init().then(() => {
                 renderCurrentPage(currentPage);
             });
-            return 0;
+            return config;
         case "get-details":
             return {icon_size: myStreamDeck.ICON_SIZE, rows: myStreamDeck.KEY_ROWS, cols: myStreamDeck.KEY_COLUMNS};
         case "set-page":
             currentPage = config[arg];
             renderCurrentPage(currentPage);
+            return 0;
+        case "commit-config":
+            fs.writeFileSync(configPath, JSON.stringify(config));
             return 0;
         default:
             return;
@@ -117,8 +120,10 @@ process.stdin.resume();
 })
 
 function cleanUpServer() {
-    myStreamDeck.resetToLogo();
-    myStreamDeck.close();
+    if (connected) {
+        myStreamDeck.resetToLogo();
+        myStreamDeck.close();
+    }
     process.exit(0);
 }
 
@@ -144,7 +149,7 @@ function registerEventListeners(myStreamDeck) {
         } else if (keyPressed.hasOwnProperty("keybind") && keyPressed.keybind != null && keyPressed.keybind !== "") {
             exec("xdotool key " + keyPressed.keybind);
         } else if (keyPressed.hasOwnProperty("url") && keyPressed.url != null && keyPressed.url !== "") {
-            exec("xdg-open http://" + keyPressed.url);
+            exec("xdg-open " + keyPressed.url);
         }
     });
     myStreamDeck.on("error", error => {
