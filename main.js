@@ -15,7 +15,14 @@ let myStreamDeck;
 
 const configPath = path.resolve(homeDir, ".streamdeck-config.json");
 
-let config = JSON.parse(fs.readFileSync(configPath));
+let config;
+
+if (!fs.existsSync(configPath)) {
+    config = [[]];
+    fs.writeFileSync(configPath, JSON.stringify(config));
+} else {
+    config = JSON.parse(fs.readFileSync(configPath));
+}
 
 let rawConfig = JSON.parse(JSON.stringify(config));
 
