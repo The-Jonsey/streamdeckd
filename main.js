@@ -159,6 +159,8 @@ function registerEventListeners(myStreamDeck) {
             exec("xdg-open " + keyPressed.url);
         } else if (keyPressed.hasOwnProperty("brightness") && keyPressed.brightness != null && keyPressed.brightness !== "") {
             myStreamDeck.setBrightness(typeof keyPressed.brightness === "string" ? parseInt(keyPressed.brightness) : keyPressed.brightness);
+        } else if (keyPressed.hasOwnProperty("write") && keyPressed.write != null && keyPressed.write !== "") {
+            exec("xdotool type \"" + keyPressed.write + "\"");
         }
     });
     myStreamDeck.on("error", () => {
