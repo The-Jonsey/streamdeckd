@@ -124,7 +124,7 @@ process.stdin.resume();
 
 [`exit`, `SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`].forEach((eventType) => {
     process.on(eventType, cleanUpServer.bind(null, eventType));
-})
+});
 
 function cleanUpServer() {
     if (connected) {
@@ -159,7 +159,7 @@ function registerEventListeners(myStreamDeck) {
             exec("xdg-open " + keyPressed.url);
         }
     });
-    myStreamDeck.on("error", error => {
+    myStreamDeck.on("error", () => {
         myStreamDeck.close();
         connected = false;
     });
