@@ -66,9 +66,9 @@ The `switch_page` is the action of the button, to switch the active page to the 
 
 The other types of actions you can have on a button are:
 
-- `command`: which is just a native shell command, something like `notify-send "Hello World"`
-- `keybind`: which will simulate the indicated keybind via xdtotool
-- `url`: which will open a url in your default browser via xdg
+- `command`: runs a native shell command, something like `notify-send "Hello World"`
+- `keybind`: simulates the indicated keybind via xdtotool
+- `url`: opens a url in your default browser via xdg
 - `brightness`: set the brightness of the streamdeck as a percentage
 - `write`: Write out a provided string via xdotool
 
