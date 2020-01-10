@@ -5,7 +5,7 @@
 ### Installation  
   
 As this uses the [Elgato Stream Deck Library](https://www.npmjs.com/package/elgato-stream-deck), you will need to follow   
-the installation process for that, which includes setting up allowing node to access the streamdeck via udev, to set this up:  
+the installation process for that, which includes setting up allowing node to access the streamdeck via udev. to set this up:  
   
 - create the file `/etc/udev/rules.d/50-elgato.rules` with the following config  
 ```  
@@ -18,7 +18,7 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="006d", MODE:="666"
   
 - run `sudo udevadm control --reload-rules` to reload the udev rules  
   
-Then xdotool will be required to simulate keypress, to install this run:  
+Then xdotool will be required to simulate keypress. to install this run:  
   
 #### Arch  
   
@@ -33,7 +33,7 @@ Then to install this package run:
   
 ### Usage  
   
-run `streamdeckd` to start the daemon, and add to your desktop environments startup apps to start on login
+run `streamdeckd` to start the daemon and add to your desktop environments startup apps to start on login
 
 ### Configuration
 
@@ -41,7 +41,7 @@ There are 2 ways to configure streamdeckd
 
 #### Graphical Configuration
 
-You can use the graphical streamdeckd configuration tool found [here](https://github.com/the-jonsey/streamdeck-editor)
+You can use the graphical streamdeckd configuration tool found [here](https://github.com/the-jonsey/streamdeck-editor).
 
 #### Manual configuration
 
@@ -60,7 +60,7 @@ An example config would be something like:
 ]
 ```
 
-So the outer array is the list of pages, the inner array is the list of button on that page, with the buttons going in a right to left order.
+The outer array is the list of pages, the inner array is the list of button on that page, with the buttons going in a right to left order.
 
 The `switch_page` is the action of the button, to switch the active page to the indicated page, in this case, 1.
 
