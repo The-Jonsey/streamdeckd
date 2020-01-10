@@ -69,7 +69,7 @@ The other types of actions you can have on a button are:
 - `command`: which is just a native shell command, something like `notify-send "Hello World"`
 - `keybind`: which will simulate the indicated keybind via xdtotool
 - `url`: which will open a url in your default browser via xdg
-- `brightness`: Set the brightness of the streamdeck as a percentage
+- `brightness`: set the brightness of the streamdeck as a percentage
 - `write`: Write out a provided string via xdotool
 
 ### D-Bus
