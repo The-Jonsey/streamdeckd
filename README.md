@@ -41,7 +41,7 @@ There are 2 ways to configure streamdeckd
 
 #### Graphical Configuration
 
-You can use the graphical streamdeckd configuration tool found [here](https://www.npmjs.com/package/streamdeck-editor)
+You can use the graphical streamdeckd configuration tool found [here](https://github.com/the-jonsey/streamdeck-editor)
 
 #### Manual configuration
 
