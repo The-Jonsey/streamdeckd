@@ -11,7 +11,7 @@ process.title = "streamdeckd";
 
 let connected = false;
 
-let firstConnect = true;
+let attemptingConnection = false;
 
 let myStreamDeck;
 
@@ -23,7 +23,7 @@ const configPath = path.resolve(homeDir, ".streamdeck-config.json");
 
 let config;
 
-let externalImageHandlers = {};
+let externalImageHandlers = [];
 
 if (!fs.existsSync(configPath)) {
     config = [[]];
@@ -37,7 +37,11 @@ let rawConfig = JSON.parse(JSON.stringify(config));
 process.stdin.resume();
 
 function connect() {
-    let myStreamDeck = StreamDeck.openStreamDeck();
+    let decks = StreamDeck.listStreamDecks();
+    if(decks.length === 0) {
+        return null;
+    }
+    let myStreamDeck = StreamDeck.openStreamDeck(decks[0].path);
     registerEventListeners(myStreamDeck);
     return myStreamDeck;
 }
@@ -70,18 +74,29 @@ function registerEventListeners(myStreamDeck) {
 }
 
 setInterval(() => {
-    if (!connected) {
+    if (!connected && !attemptingConnection) {
+        attemptingConnection = true;
         console.log("Attempting Connection");
+        while (externalImageHandlers.length > 0) {
+            let handler = externalImageHandlers[0];
+            handler.cleanup();
+            externalImageHandlers.shift();
+        }
         try {
             myStreamDeck = connect();
-            init().then(() => {
-                connected = true;
-                renderCurrentPage(currentPage);
-            })
+            if (myStreamDeck !== null)
+                init().then(() => {
+                    connected = true;
+                    attemptingConnection = false;
+                    renderCurrentPage(currentPage);
+                });
+            else
+                attemptingConnection = false;
         } catch (e) {
+            attemptingConnection = false;
         }
     }
-}, 1000);
+}, 500);
 
 function init() {
     return generateBuffers();
@@ -160,21 +175,15 @@ async function generateBuffers() {
         for (let j = 0; j < config[i].length; j++) {
             let key = config[i][j];
             if (key.icon_handler) {
-                let handler;
-                if (firstConnect) {
-                    handler = require(key.icon_handler);
-                    externalImageHandlers[key.icon_handler] = handler;
-                } else {
-                    handler = externalImageHandlers[key.icon_handler];
-                }
-                handler(i, key, j);
+                let handler = require(key.icon_handler);
+                externalImageHandlers.push(handler);
+                handler.init(i, key, j);
                 continue;
             }
             config[i][j].buffer = await generateBuffer(key.icon, key.text, j);
         }
     }
     setCurrentPage(0);
-    firstConnect = false;
 }
 
 async function generateBuffer(icon = __dirname + "/blank.png", text, index) {
