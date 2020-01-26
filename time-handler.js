@@ -1,8 +1,11 @@
 const streamdeckd = require("./main.js");
+let interval;
 
 module.exports = (page, key, index) => {
+    if (interval)
+        return;
     let colon = true;
-    setInterval(async () => {
+    interval = setInterval(async () => {
         let now = new Date();
         let buffer = await streamdeckd.generateBuffer(undefined, zeros(now.getHours()) + (colon ? ":" : " ") + zeros(now.getMinutes()), index);
         streamdeckd.setConfigIcon(page, index, buffer);

@@ -1,7 +1,10 @@
 const streamdeckd = require("./main.js");
 const gifFrames = require("gif-frames");
+let interval;
 
 module.exports = async (page, key, index) => {
+    if (interval)
+        return;
     let frames = {delay: 0, frames: []};
     gifFrames({url: key.icon, frames: "all", cumulative: true}, (err, data) => {
         frames.delay = data[0].frameInfo.delay;
@@ -17,7 +20,7 @@ module.exports = async (page, key, index) => {
 
 function startLoop(frames, page, index) {
     let currentFrame = 0;
-    setInterval(() => {
+    interval = setInterval(() => {
         streamdeckd.setConfigIcon(page, index, frames.frames[currentFrame]);
         currentFrame++;
         if (currentFrame === frames.frames.length) {

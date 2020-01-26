@@ -20,6 +20,7 @@
     "elgato-stream-deck": "^3.2.0",
     "gif-frames": "^1.0.1",
     "ps-node": "^0.1.6",
-    "sharp": "^0.24.0"
+    "sharp": "^0.24.0",
+    "request": "latest"
   }
 }

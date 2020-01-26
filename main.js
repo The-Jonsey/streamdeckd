@@ -3,7 +3,7 @@ const path = require('path');
 const sharp = require('sharp');
 const fs = require('fs');
 const StreamDeck = require('elgato-stream-deck');
-const exec = require('child_process').exec;
+const {exec, spawn} = require('child_process');
 const homeDir = require('os').homedir();
 const {createCanvas} = require('canvas');
 
@@ -23,6 +23,8 @@ const configPath = path.resolve(homeDir, ".streamdeck-config.json");
 
 let config;
 
+let externalImageHandlers = {};
+
 if (!fs.existsSync(configPath)) {
     config = [[]];
     fs.writeFileSync(configPath, JSON.stringify(config));
@@ -36,7 +38,6 @@ process.stdin.resume();
 
 function connect() {
     let myStreamDeck = StreamDeck.openStreamDeck();
-    connected = true;
     registerEventListeners(myStreamDeck);
     return myStreamDeck;
 }
@@ -51,7 +52,7 @@ function registerEventListeners(myStreamDeck) {
             renderCurrentPage(currentPage);
             dbus.updatePage(keyPressed.switch_page - 1);
         } else if (keyPressed.hasOwnProperty("command") && keyPressed.command != null && keyPressed.command !== "") {
-            exec(keyPressed.command);
+            spawn(keyPressed.command, [], {detached: true});
         } else if (keyPressed.hasOwnProperty("keybind") && keyPressed.keybind != null && keyPressed.keybind !== "") {
             exec("xdotool key " + keyPressed.keybind);
         } else if (keyPressed.hasOwnProperty("url") && keyPressed.url != null && keyPressed.url !== "") {
@@ -74,6 +75,7 @@ setInterval(() => {
         try {
             myStreamDeck = connect();
             init().then(() => {
+                connected = true;
                 renderCurrentPage(currentPage);
             })
         } catch (e) {
@@ -81,11 +83,8 @@ setInterval(() => {
     }
 }, 1000);
 
-async function init() {
-    if (firstConnect) {
-        firstConnect = false;
-        return await generateBuffers();
-    }
+function init() {
+    return generateBuffers();
 }
 
 [`exit`, `SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`].forEach((eventType) => {
@@ -94,7 +93,11 @@ async function init() {
 
 function cleanUpServer() {
     if (connected) {
-        myStreamDeck.resetToLogo();
+        try {
+            myStreamDeck.resetToLogo();
+        } catch (e) {
+
+        }
         myStreamDeck.close();
     }
     process.exit(0);
@@ -157,13 +160,21 @@ async function generateBuffers() {
         for (let j = 0; j < config[i].length; j++) {
             let key = config[i][j];
             if (key.icon_handler) {
-                require(key.icon_handler)(i, key, j);
+                let handler;
+                if (firstConnect) {
+                    handler = require(key.icon_handler);
+                    externalImageHandlers[key.icon_handler] = handler;
+                } else {
+                    handler = externalImageHandlers[key.icon_handler];
+                }
+                handler(i, key, j);
                 continue;
             }
             config[i][j].buffer = await generateBuffer(key.icon, key.text, j);
         }
     }
     setCurrentPage(0);
+    firstConnect = false;
 }
 
 async function generateBuffer(icon = __dirname + "/blank.png", text, index) {
