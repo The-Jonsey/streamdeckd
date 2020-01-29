@@ -3,9 +3,14 @@ const path = require('path');
 const sharp = require('sharp');
 const fs = require('fs');
 const StreamDeck = require('elgato-stream-deck');
-const {exec, spawn} = require('child_process');
+const cp = require('child_process');
 const homeDir = require('os').homedir();
 const {createCanvas} = require('canvas');
+let handlers = require("./handlers.js").handlers;
+
+Object.keys(handlers).forEach(handler => {
+    handlers[handler] = require(handlers[handler]);
+});
 
 process.title = "streamdeckd";
 
@@ -26,7 +31,7 @@ let config;
 let externalImageHandlers = [];
 
 if (!fs.existsSync(configPath)) {
-    config = [[]];
+    config = [[{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]];
     fs.writeFileSync(configPath, JSON.stringify(config));
 } else {
     config = JSON.parse(fs.readFileSync(configPath));
@@ -34,11 +39,13 @@ if (!fs.existsSync(configPath)) {
 
 let rawConfig = JSON.parse(JSON.stringify(config));
 
+let buffersGenerated = false;
+
 process.stdin.resume();
 
 function connect() {
     let decks = StreamDeck.listStreamDecks();
-    if(decks.length === 0) {
+    if (decks.length === 0) {
         return null;
     }
     let myStreamDeck = StreamDeck.openStreamDeck(decks[0].path);
@@ -56,15 +63,15 @@ function registerEventListeners(myStreamDeck) {
             renderCurrentPage(currentPage);
             dbus.updatePage(keyPressed.switch_page - 1);
         } else if (keyPressed.hasOwnProperty("command") && keyPressed.command != null && keyPressed.command !== "") {
-            spawn(keyPressed.command, [], {detached: true});
+            cp.spawn(keyPressed.command, [], {detached: true, shell: true}).unref();
         } else if (keyPressed.hasOwnProperty("keybind") && keyPressed.keybind != null && keyPressed.keybind !== "") {
-            exec("xdotool key " + keyPressed.keybind);
+            cp.exec("xdotool key " + keyPressed.keybind);
         } else if (keyPressed.hasOwnProperty("url") && keyPressed.url != null && keyPressed.url !== "") {
-            exec("xdg-open " + keyPressed.url);
+            cp.exec("xdg-open " + keyPressed.url);
         } else if (keyPressed.hasOwnProperty("brightness") && keyPressed.brightness != null && keyPressed.brightness !== "") {
             myStreamDeck.setBrightness(typeof keyPressed.brightness === "string" ? parseInt(keyPressed.brightness) : keyPressed.brightness);
         } else if (keyPressed.hasOwnProperty("write") && keyPressed.write != null && keyPressed.write !== "") {
-            exec("xdotool type \"" + keyPressed.write + "\"");
+            cp.exec("xdotool type \"" + keyPressed.write + "\"");
         }
     });
     myStreamDeck.on("error", (err) => {
@@ -77,20 +84,18 @@ setInterval(() => {
     if (!connected && !attemptingConnection) {
         attemptingConnection = true;
         console.log("Attempting Connection");
-        while (externalImageHandlers.length > 0) {
-            let handler = externalImageHandlers[0];
-            handler.cleanup();
-            externalImageHandlers.shift();
+        for (let handler of externalImageHandlers) {
+            handler.stopLoop();
         }
         try {
             myStreamDeck = connect();
-            if (myStreamDeck !== null)
+            if (myStreamDeck !== null) {
                 init().then(() => {
                     connected = true;
                     attemptingConnection = false;
                     renderCurrentPage(currentPage);
                 });
-            else
+            } else
                 attemptingConnection = false;
         } catch (e) {
             attemptingConnection = false;
@@ -98,8 +103,17 @@ setInterval(() => {
     }
 }, 500);
 
-function init() {
-    return generateBuffers();
+function init(configChange = false) {
+    if (!buffersGenerated || configChange) {
+        while (externalImageHandlers.length > 0) {
+            let handler = externalImageHandlers[0];
+            handler.cleanup();
+            externalImageHandlers.shift();
+        }
+        buffersGenerated = false;
+        return generateBuffers();
+    }
+    return restartHandlers();
 }
 
 [`exit`, `SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`].forEach((eventType) => {
@@ -119,18 +133,28 @@ function cleanUpServer() {
 }
 
 dbus.init(rawConfig, (command, arg) => {
+    let newConfig;
+    let configDiff;
+    let newRawConfig;
     switch (command) {
         case "update-config":
-            config = JSON.parse(arg);
+            newConfig = JSON.parse(arg);
+            newRawConfig = JSON.parse(JSON.stringify(newConfig));
+            configDiff = diffConfig(newConfig);
+            config = newConfig;
+            rawConfig = newRawConfig;
             setCurrentPage();
-            init().then(() => {
+            updateBuffers(configDiff).then(() => {
                 renderCurrentPage(currentPage);
             });
             return 0;
         case "reload-config":
-            config = JSON.parse(fs.readFileSync(configPath));
-            setCurrentPage();
-            init().then(() => {
+            newConfig = JSON.parse(fs.readFileSync(configPath));
+            newRawConfig = JSON.parse(JSON.stringify(newConfig));
+            configDiff = diffConfig(newConfig);
+            config = newConfig;
+            rawConfig = newRawConfig;
+            updateBuffers(configDiff).then(() => {
                 renderCurrentPage(currentPage);
             });
             return config;
@@ -148,6 +172,40 @@ dbus.init(rawConfig, (command, arg) => {
     }
 });
 
+function diffConfig(newConfig) {
+    let diff = [];
+    if (JSON.stringify(newConfig) === JSON.stringify(rawConfig)) {
+        for (let i = 0; i < newConfig.length; i++) {
+            newConfig[i] = config[i];
+        }
+        return [];
+    }
+    for (let i = 0; i < newConfig.length; i++) {
+        let diffPage = [];
+        if (i >= rawConfig.length) {
+            diffPage = newConfig[i];
+        } else if (JSON.stringify(newConfig[i]) !== JSON.stringify(rawConfig[i])) {
+            for (let j = 0; j < newConfig[i].length; j++) {
+                let diffCell = {};
+                if (j >= newConfig[i].length || JSON.stringify(newConfig[i][j]) !== JSON.stringify(rawConfig[i][j])) {
+                    diffCell = newConfig[i][j];
+                } else {
+                    newConfig[i][j] = config[i][j];
+                    diffCell = config[i][j];
+                }
+                if (config[i][j].hasOwnProperty("handler")) {
+                    diffCell.handler = config[i][j].handler;
+                }
+                diffPage.push(diffCell);
+            }
+        } else {
+            newConfig[i] = config[i];
+        }
+        diff.push(diffPage);
+    }
+    return diff;
+}
+
 async function renderCurrentPage(page) {
     if (page.length < myStreamDeck.KEY_ROWS * myStreamDeck.KEY_COLUMNS) {
         for (let x = page.length; x < myStreamDeck.KEY_ROWS * myStreamDeck.KEY_COLUMNS; x++) {
@@ -155,9 +213,9 @@ async function renderCurrentPage(page) {
         }
     }
     page.forEach(async (key, index) => {
-        if (key.hasOwnProperty("buffer")) {
+        if (key.hasOwnProperty("buffer") && key.buffer) {
             setImage(key.buffer);
-        } else {
+        } else if (!key.hasOwnProperty("icon_handler")) {
             myStreamDeck.clearKey(index);
         }
 
@@ -170,14 +228,19 @@ function setImage(buffer) {
     });
 }
 
-async function generateBuffers() {
+async function updateBuffers(config) {
     for (let i = 0; i < config.length; i++) {
         for (let j = 0; j < config[i].length; j++) {
             let key = config[i][j];
-            if (key.icon_handler) {
-                let handler = require(key.icon_handler);
+            if (key.hasOwnProperty("handler")) {
+                key.handler.cleanup();
+                delete key.handler;
+            }
+            if (key.hasOwnProperty("icon_handler")) {
+                let handler = handlers[key.icon_handler];
+                handler = new handler(i, j, generateBuffer, setConfigIcon, key);
                 externalImageHandlers.push(handler);
-                handler.init(i, key, j);
+                key.handler = handler;
                 continue;
             }
             config[i][j].buffer = await generateBuffer(key.icon, key.text, j);
@@ -186,16 +249,26 @@ async function generateBuffers() {
     setCurrentPage(0);
 }
 
+async function generateBuffers() {
+    if (buffersGenerated)
+        return;
+    await updateBuffers(config);
+    setCurrentPage(0);
+    buffersGenerated = true;
+}
+
 async function generateBuffer(icon = __dirname + "/blank.png", text, index) {
     let image;
+    if (icon === "")
+        icon = __dirname + "/blank.png";
     if (typeof icon === "string")
         image = path.resolve(icon);
     else
         image = icon;
     let textSVG;
     if (text) {
-        textSVG = `<svg width="72px" height="72px" viewBox="0 0 72 72">
-        <text x="50%" y="50%" transform="rotate(180 36,36)" dominant-baseline="middle" text-anchor="middle"
+        textSVG = `<svg width="72" height="72" viewBox="0 0 72 72">
+        <text x="50%" y="50%" transform="rotate(180 36,36)" dominant-baseline="central" text-anchor="middle" alignment-baseline="central" baseline-shift="` + ((100 - calculateFontSize(text)) / 2) + `%"
         style="fill:white; stroke: black; stroke-width: 0.5; font-weight: bold; font-size: `
             + calculateFontSize(text) + `%; font-family: sans-serif">` + text + `</text>
         </svg>`;
@@ -208,8 +281,14 @@ async function generateBuffer(icon = __dirname + "/blank.png", text, index) {
             input: Buffer.from(textSVG),
         }]);
     }
-    buf = await buf.flip().flop().jpeg().toBuffer();
+    buf = await buf.flip().flop().jpeg({quality: 100, chromaSubsampling: "4:4:4"}).toBuffer();
     return myStreamDeck.generateFillImageWrites(index, buf);
+}
+
+async function restartHandlers() {
+    for (let handler of externalImageHandlers) {
+        handler.startLoop();
+    }
 }
 
 function calculateFontSize(text) {
@@ -218,7 +297,8 @@ function calculateFontSize(text) {
     const context = canvas.getContext('2d');
     context.font = fontFamily;
     let width = context.measureText(text).width;
-    return (1 / (width / 72)) * 100;
+    let size = (1 / (width / 72)) * 100;
+    return size < 500 ? size : 500
 }
 
 function setCurrentPage(i = 0) {
@@ -232,9 +312,3 @@ function setConfigIcon(page, index, buffer) {
         setImage(buffer);
     }
 }
-
-
-module.exports = {
-    generateBuffer,
-    setConfigIcon
-};
