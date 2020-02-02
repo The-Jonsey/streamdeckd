@@ -268,8 +268,8 @@ async function generateBuffer(icon = __dirname + "/blank.png", text, index) {
     let textSVG;
     if (text) {
         textSVG = `<svg width="72" height="72" viewBox="0 0 72 72">
-        <text x="50%" y="50%" transform="rotate(180 36,36)" dominant-baseline="central" text-anchor="middle" alignment-baseline="central" baseline-shift="` + ((100 - calculateFontSize(text)) / 2) + `%"
-        style="fill:white; stroke: black; stroke-width: 0.5; font-weight: bold; font-size: `
+        <text x="50%" y="50%" textLength="72px" transform="rotate(180 36,36)" dominant-baseline="central" text-anchor="middle" alignment-baseline="central" baseline-shift="` + ((100 - calculateFontSize(text)) / 2) + `%"
+        style="width: 72px; fill:white; stroke: black; stroke-width: 0.5; font-weight: bold; font-size: `
             + calculateFontSize(text) + `%; font-family: sans-serif">` + text + `</text>
         </svg>`;
     }
@@ -298,7 +298,7 @@ function calculateFontSize(text) {
     context.font = fontFamily;
     let width = context.measureText(text).width;
     let size = (1 / (width / 72)) * 100;
-    return size < 500 ? size : 500
+    return size < 500 ? size > 50 ? size : 50 : 500;
 }
 
 function setCurrentPage(i = 0) {

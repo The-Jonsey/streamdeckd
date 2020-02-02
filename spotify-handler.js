@@ -12,6 +12,7 @@ module.exports = class SpotifyHandler {
         this.buffer = undefined;
         this.currentURL = "";
         this.init();
+        this.blank = false;
     }
 
     init () {
@@ -35,11 +36,11 @@ module.exports = class SpotifyHandler {
         this.interval = setInterval(() => {
             dbus.sessionBus().getService("org.mpris.MediaPlayer2.spotify").getInterface("/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties", (err, iface) => {
                 if (err) {
-                    return;
+                    return this.setBlank();
                 }
                 iface.Get("org.mpris.MediaPlayer2.Player", "Metadata", (err, str) => {
                     if (err) {
-                        return;
+                        return this.setBlank;
                     }
                     try {
                         let url = str[1][0][2][1][1][0];
@@ -48,13 +49,22 @@ module.exports = class SpotifyHandler {
                                 this.currentURL = url;
                                 this.buffer = await this.generateBuffer(body, undefined, this.index);
                                 this.setConfigIcon(this.page, this.index, this.buffer);
+                                this.blank = false;
                             });
                         }
                     } catch (e) {
-
+                        return this.setBlank();
                     }
                 })
             });
         }, 1000);
+    }
+
+    async setBlank() {
+        if (!this.blank) {
+            this.buffer = await this.generateBuffer(undefined, undefined, this.index);
+            this.setConfigIcon(this.page, this.index, this.buffer);
+        }
+        this.blank = true;
     }
 };
