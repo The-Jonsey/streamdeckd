@@ -159,7 +159,7 @@ dbus.init(rawConfig, (command, arg) => {
             });
             return config;
         case "get-details":
-            return {icon_size: myStreamDeck.ICON_SIZE, rows: myStreamDeck.KEY_ROWS, cols: myStreamDeck.KEY_COLUMNS};
+            return {icon_size: myStreamDeck.ICON_SIZE, rows: myStreamDeck.KEY_ROWS, cols: myStreamDeck.KEY_COLUMNS, page: currentPageIndex};
         case "set-page":
             setCurrentPage(arg);
             renderCurrentPage(currentPage);
