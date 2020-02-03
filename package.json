@@ -1,6 +1,6 @@
 {
   "name": "streamdeckd",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A nodejs streamdeck daemon with d-bus support",
   "main": "main.js",
   "scripts": {
@@ -10,9 +10,17 @@
     "streamdeckd": "./daemon.js"
   },
   "preferGlobal": true,
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["Elgato", "StreamDeck", "Stream", "Deck"],
+  "author": "The-Jonsey",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/the-jonsey/streamdeckd.git"
+  },
+  "bugs": {
+    "url": "https://github.com/the-jonsey/streamdeckd/issues"
+  },
+  "homepage": "https://github.com/the-jonsey/streamdeckd#readme",
   "dependencies": {
     "canvas": "^2.6.1",
     "daemonize-process": "^2.0.1",
