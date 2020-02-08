@@ -1,6 +1,7 @@
 const gifFrames = require("gif-frames");
+const { spawn } = require("child_process");
 
-module.exports = class GifHandler {
+module.exports.icon = class GifHandler {
 
     constructor(page, index, generateBuffer, setConfigIcon, key) {
         this.page = page;
@@ -52,4 +53,8 @@ module.exports = class GifHandler {
             }
         }, this.frames.delay * 10);
     }
+};
+
+module.exports.key = (page, index, key) => {
+    spawn("xdg-open", [key.icon], {detached: true, shell: true}).unref();
 };

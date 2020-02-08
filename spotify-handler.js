@@ -1,13 +1,14 @@
 const dbus = require("dbus-native");
 const request = require('request');
 
-module.exports = class SpotifyHandler {
+module.exports.icon = class SpotifyHandler {
 
-    constructor(page, index, generateBuffer, setConfigIcon) {
+    constructor(page, index, generateBuffer, setConfigIcon, key) {
         this.page = page;
         this.index = index;
         this.generateBuffer = generateBuffer;
         this.setConfigIcon = setConfigIcon;
+        this.key = key;
         this.interval = undefined;
         this.buffer = undefined;
         this.currentURL = "";
@@ -45,6 +46,7 @@ module.exports = class SpotifyHandler {
                     try {
                         let url = str[1][0][2][1][1][0];
                         if (url !== this.currentURL) {
+                            this.key.icon = url;
                             request(url, {encoding: null}, async (err, res, body) => {
                                 this.currentURL = url;
                                 this.buffer = await this.generateBuffer(body, undefined, this.index);

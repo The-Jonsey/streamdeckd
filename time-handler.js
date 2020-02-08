@@ -1,4 +1,4 @@
-module.exports = class TimeHandler {
+module.exports.icon = class TimeHandler {
 
     constructor(page, index, generateBuffer, setConfigIcon) {
         this.page = page;

@@ -37,7 +37,7 @@ sessionBus.requestName(service, 0x4, (err, retCode) => {
 
 function proceed() {
 
-    var ifaceDesc = {
+    let ifaceDesc = {
         name: interfaceName,
         methods: {
             GetConfig: ['', 's', [], 'running_config'],
@@ -59,8 +59,11 @@ function proceed() {
         GetConfig: function () {
             return JSON.stringify(currentConfig);
         },
-        SetConfig: function (newConfig) {
-            let status = callback("update-config", newConfig);
+        /**
+         * @return {string}
+         */
+        SetConfig: async function (newConfig) {
+            let status = await callback("update-config", newConfig);
             if (status === 0) {
                 currentConfig = JSON.parse(newConfig);
                 return "SUCCESS";
@@ -68,17 +71,26 @@ function proceed() {
                 return "ERROR";
             }
         },
-        ReloadConfig: function() {
-            currentConfig = callback("reload-config");
+        ReloadConfig: async function() {
+            currentConfig = await callback("reload-config");
         },
-        GetDeckInfo: function() {
-            return JSON.stringify(callback("get-details"));
+        /**
+         * @return {string}
+         */
+        GetDeckInfo: async function() {
+            return JSON.stringify(await callback("get-details"));
         },
-        SetPage: function(page) {
-            return callback("set-page", parseInt(page)) === 0 ? "SUCCESS" : "ERROR";
+        /**
+         * @return {string}
+         */
+        SetPage: async function(page) {
+            return await callback("set-page", parseInt(page)) === 0 ? "SUCCESS" : "ERROR";
         },
-        CommitConfig: function() {
-            return callback("commit-config") === 0 ? "SUCCESS" : "ERROR";
+        /**
+         * @return {string}
+         */
+        CommitConfig: async function() {
+            return await callback("commit-config") === 0 ? "SUCCESS" : "ERROR";
         },
         emit: function () {
 
