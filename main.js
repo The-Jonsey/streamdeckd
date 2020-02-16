@@ -7,11 +7,7 @@ const cp = require('child_process');
 const homeDir = require('os').homedir();
 const {createCanvas} = require('canvas');
 const usbDetect = require("usb-detection");
-let handlers = require("./handlers.js").handlers;
-
-Object.keys(handlers).forEach(handler => {
-    handlers[handler] = require(handlers[handler]);
-});
+let handlers = require("./handlers.json");
 
 process.title = "streamdeckd";
 
@@ -32,11 +28,23 @@ let config;
 let externalImageHandlers = [];
 
 if (!fs.existsSync(configPath)) {
-    config = [[{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]];
+    config = {handlers: {}, pages: [[{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]]};
     fs.writeFileSync(configPath, JSON.stringify(config));
 } else {
     config = JSON.parse(fs.readFileSync(configPath).toString());
+    if (config instanceof Array) {
+        config = {handlers: {}, pages: config};
+        fs.writeFileSync(configPath, JSON.stringify(config));
+    }
 }
+
+if (config.hasOwnProperty("handlers")) {
+    handlers = {...handlers, ...config.handlers}
+}
+
+Object.keys(handlers).forEach(handler => {
+    handlers[handler].import = require(handlers[handler].script_path);
+});
 
 let rawConfig = JSON.parse(JSON.stringify(config));
 
@@ -106,6 +114,8 @@ async function attemptConnection() {
 }
 
 function registerEventListeners(myStreamDeck) {
+    if (config.hasOwnProperty("brightness"))
+        myStreamDeck.setBrightness(config.brightness);
     myStreamDeck.on('up', async keyIndex => {
         let keyPressed = currentPage[keyIndex];
         if (keyPressed === undefined)
@@ -130,7 +140,7 @@ function registerEventListeners(myStreamDeck) {
             cp.exec("xdotool type \"" + keyPressed.write + "\"");
         }
         if (keyPressed.hasOwnProperty("key_handler")) {
-            handlers[keyPressed.key_handler].key(currentPageIndex, keyIndex, keyPressed);
+            handlers[keyPressed.key_handler].import.key(currentPageIndex, keyIndex, keyPressed);
         }
     });
     myStreamDeck.on("error", () => {
@@ -157,50 +167,11 @@ function registerEventListeners(myStreamDeck) {
     }).bind(null, eventType));
 });
 
-dbus.init(rawConfig, async (command, arg) => {
-    let newConfig;
-    let configDiff;
-    let newRawConfig;
-    switch (command) {
-        case "update-config":
-            newConfig = JSON.parse(arg);
-            newRawConfig = JSON.parse(JSON.stringify(newConfig));
-            configDiff = diffConfig(newConfig);
-            config = newConfig;
-            rawConfig = newRawConfig;
-            await updateBuffers(configDiff);
-            return 0;
-        case "reload-config":
-            newConfig = JSON.parse(fs.readFileSync(configPath).toString());
-            newRawConfig = JSON.parse(JSON.stringify(newConfig));
-            configDiff = diffConfig(newConfig);
-            config = newConfig;
-            rawConfig = newRawConfig;
-            await updateBuffers(configDiff);
-            return config;
-        case "get-details":
-            return {
-                icon_size: myStreamDeck.ICON_SIZE,
-                rows: myStreamDeck.KEY_ROWS,
-                cols: myStreamDeck.KEY_COLUMNS,
-                page: currentPageIndex
-            };
-        case "set-page":
-            await setCurrentPage(arg);
-            return 0;
-        case "commit-config":
-            fs.writeFileSync(configPath, JSON.stringify(rawConfig));
-            return 0;
-        default:
-            return;
-    }
-});
-
 function diffConfig(newConfig) {
     let diff = [];
     if (JSON.stringify(newConfig) === JSON.stringify(rawConfig)) {
         for (let i = 0; i < newConfig.length; i++) {
-            newConfig[i] = config[i];
+            newConfig[i] = config.pages[i];
         }
         return [];
     }
@@ -214,16 +185,16 @@ function diffConfig(newConfig) {
                 if (j >= newConfig[i].length || JSON.stringify(newConfig[i][j]) !== JSON.stringify(rawConfig[i][j])) {
                     diffCell = newConfig[i][j];
                 } else {
-                    newConfig[i][j] = config[i][j];
-                    diffCell = config[i][j];
+                    newConfig[i][j] = config.pages[i][j];
+                    diffCell = config.pages[i][j];
                 }
-                if (config[i][j].hasOwnProperty("iconHandler")) {
-                    diffCell.iconHandler = config[i][j].iconHandler;
+                if (config.pages[i][j].hasOwnProperty("iconHandler")) {
+                    diffCell.iconHandler = config.pages[i][j].iconHandler;
                 }
                 diffPage.push(diffCell);
             }
         } else {
-            newConfig[i] = config[i];
+            newConfig[i] = config.pages[i];
         }
         diff.push(diffPage);
     }
@@ -258,7 +229,7 @@ async function updateBuffers(config) {
                 delete key.iconHandler;
             }
             if (key.hasOwnProperty("icon_handler")) {
-                let handler = handlers[key.icon_handler].icon;
+                let handler = handlers[key.icon_handler].import.icon;
                 handler = new handler(i, j, generateBuffer, setConfigIcon, key);
                 externalImageHandlers.push(handler);
                 key.iconHandler = handler;
@@ -273,7 +244,7 @@ async function updateBuffers(config) {
 async function generateBuffers() {
     if (buffersGenerated)
         return;
-    await updateBuffers(config);
+    await updateBuffers(config.pages);
     buffersGenerated = true;
 }
 
@@ -325,15 +296,99 @@ function calculateFontSize(text) {
 
 async function setCurrentPage(i = 0) {
     currentPageIndex = i;
-    currentPage = config[currentPageIndex];
+    currentPage = config.pages[currentPageIndex];
     renderCurrentPage(currentPage);
 }
 
 function setConfigIcon(page, index, buffer) {
-    config[page][index].buffer = buffer;
+    config.pages[page][index].buffer = buffer;
     if (connected && page === currentPageIndex) {
         setImage(buffer);
     }
 }
 
 registerReconnectInterval();
+
+dbus.init(rawConfig, async (command, arg) => {
+    let newConfig;
+    let configDiff;
+    let newRawConfig;
+    switch (command) {
+        case "update-config":
+            newConfig = JSON.parse(arg);
+            newRawConfig = JSON.parse(JSON.stringify(newConfig));
+            configDiff = diffConfig(newConfig);
+            config = newConfig;
+            rawConfig = newRawConfig;
+            await updateBuffers(configDiff);
+            return 0;
+        case "reload-config":
+            newConfig = JSON.parse(fs.readFileSync(configPath).toString());
+            newRawConfig = JSON.parse(JSON.stringify(newConfig));
+            configDiff = diffConfig(newConfig);
+            config = newConfig;
+            rawConfig = newRawConfig;
+            await updateBuffers(configDiff);
+            return config;
+        case "get-details":
+            return {
+                icon_size: myStreamDeck.ICON_SIZE,
+                rows: myStreamDeck.KEY_ROWS,
+                cols: myStreamDeck.KEY_COLUMNS,
+                page: currentPageIndex
+            };
+        case "set-page":
+            await setCurrentPage(arg);
+            return 0;
+        case "commit-config":
+            fs.writeFileSync(configPath, JSON.stringify(rawConfig));
+            return 0;
+        default:
+            return;
+    }
+});
+
+class DBusClient {
+    constructor() {
+
+    }
+
+    async updateConfig(newConfig) {
+        newConfig = JSON.parse(arg);
+        let newRawConfig = JSON.parse(JSON.stringify(newConfig));
+        let configDiff = diffConfig(newConfig);
+        config = newConfig;
+        rawConfig = newRawConfig;
+        await updateBuffers(configDiff);
+        return 0;
+    }
+
+    async reloadConfig() {
+        let newConfig = JSON.parse(fs.readFileSync(configPath).toString());
+        let newRawConfig = JSON.parse(JSON.stringify(newConfig));
+        let configDiff = diffConfig(newConfig);
+        config = newConfig;
+        rawConfig = newRawConfig;
+        await updateBuffers(configDiff);
+        return config;
+    }
+
+    getConfig() {
+        return {
+            icon_size: myStreamDeck.ICON_SIZE,
+            rows: myStreamDeck.KEY_ROWS,
+            cols: myStreamDeck.KEY_COLUMNS,
+            page: currentPageIndex
+        };
+    }
+
+    async setPage() {
+        await setCurrentPage(arg);
+        return 0;
+    }
+
+    commitConfig() {
+        fs.writeFileSync(configPath, JSON.stringify(rawConfig));
+        return 0;
+    }
+}

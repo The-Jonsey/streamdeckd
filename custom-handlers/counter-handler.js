@@ -1,5 +1,5 @@
 
-module.exports.icon = class Counter {
+class Counter {
 
     constructor(page, index, generateBuffer, setConfigIcon) {
         this.value = 0;
@@ -10,21 +10,27 @@ module.exports.icon = class Counter {
         this.setIcon();
     }
 
-    async setIcon() {
-        let buffer = await this.generateBuffer(undefined, this.value.toString(), this.index);
-        this.setConfigIcon(this.page, this.index, buffer);
+    setIcon() {
+        this.generateBuffer(undefined, this.value.toString(), this.index).then((buffer) =>{
+            this.setConfigIcon(this.page, this.index, buffer);
+        });
     }
 
     incrementCounter() {
         this.value += 1;
         this.setIcon();
     }
-};
+}
 
 
-module.exports.key = (page, index, key) => {
+function counter(page, index, key) {
     if (key.iconHandler instanceof module.exports.icon)
         key.iconHandler.incrementCounter();
     else
         throw new Error();
+}
+
+module.exports = {
+    key: counter,
+    icon: Counter
 };

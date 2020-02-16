@@ -1,0 +1,14 @@
+{
+  "Spotify": {
+    "script_path": "./spotify-handler.js"
+  },
+  "Time": {
+    "script_path": "./time-handler.js"
+  },
+  "Gif": {
+    "script_path": "./gif-handler",
+    "iconFields": [
+      "icon"
+    ]
+  }
+}
