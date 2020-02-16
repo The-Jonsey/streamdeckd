@@ -61,14 +61,19 @@ usbDetect.on("add:4057", async () => {
 });
 
 function registerReconnectInterval() {
-    interval = setInterval(async () => {
-        console.log("Interval");
-        if (!connected && !attemptingConnection) {
-            if (await attemptConnection()) {
+    if (!interval)
+        interval = setInterval(async () => {
+            console.log("Interval");
+            if (!connected && !attemptingConnection) {
+                if (await attemptConnection()) {
+                    clearInterval(interval);
+                    interval = undefined;
+                }
+            } else if (connected) {
                 clearInterval(interval);
+                interval = undefined;
             }
-        }
-    }, 500);
+        }, 500);
 }
 
 async function attemptConnection() {
@@ -145,10 +150,16 @@ function registerEventListeners(myStreamDeck) {
     });
     myStreamDeck.on("error", () => {
         myStreamDeck.close();
-        usbDetect.find(4057, function (err, devices) {
-            if (devices.length > 0)
-                registerReconnectInterval();
-        });
+        for (let handler of externalImageHandlers) {
+            if (handler.hasOwnProperty("stopLoop"))
+                handler.stopLoop();
+        }
+        setTimeout(() => {
+            usbDetect.find(4057, function (err, devices) {
+                if (devices.length > 0)
+                    registerReconnectInterval();
+            });
+        }, 1500);
         connected = false;
     });
 }

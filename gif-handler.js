@@ -20,7 +20,7 @@ module.exports.icon = class GifHandler {
         if (this.frames.frames.length)
             return this.startLoop();
         gifFrames({url: this.key.icon, frames: "all", cumulative: true}, (err, data) => {
-            this.frames.delay = data[0].frameInfo.delay;
+            this.frames.delay = data[0].frameInfo.delay || 10 / 3;
             data.forEach(async (frame) => {
                 let image = frame.getImage();
                 this.frames.frames[frame.frameIndex] = await this.generateBuffer(image._obj, this.key.text, this.index);
