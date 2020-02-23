@@ -47,7 +47,9 @@ module.exports.icon = class SpotifyHandler {
                         let url = str[1][0][2][1][1][0];
                         if (url !== this.currentURL) {
                             this.key.icon = url;
-                            request(url, {encoding: null}, async (err, res, body) => {
+                            request(url, {encoding: null, headers: {
+                                'User-Agent': 'StreamDeckd/1.0.0'
+                                }}, async (err, res, body) => {
                                 this.currentURL = url;
                                 this.buffer = await this.generateBuffer(body, undefined, this.index);
                                 this.setConfigIcon(this.page, this.index, this.buffer);

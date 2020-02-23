@@ -5,10 +5,9 @@ const service = 'com.thejonsey.streamdeck';
 const interfaceName = service;
 
 const objectPath = `/${service.replace(/\./g, '/')}`;
-let currentConfig;
-let callback;
+let BusClient;
 let iface;
-
+let callback;
 
 sessionBus.requestName(service, 0x4, (err, retCode) => {
 
@@ -41,11 +40,11 @@ function proceed() {
         name: interfaceName,
         methods: {
             GetConfig: ['', 's', [], 'running_config'],
-            SetConfig: ['s', 's', ['new_config'], ['action_result']],
+            SetConfig: ['s', '', ['new_config'], []],
             ReloadConfig: ['', '', [], []],
             GetDeckInfo: ['', 's', [], []],
-            SetPage: ['s', 's', ['new_page'], ['action_result']],
-            CommitConfig: ['', 's', [], ['action_result']]
+            SetPage: ['i', '', ['new_page'], []],
+            CommitConfig: ['', '', [], []]
         },
         signals: {
             Page: ['i', 'page_number']
@@ -57,55 +56,63 @@ function proceed() {
          * @return {string}
          */
         GetConfig: function () {
-            return JSON.stringify(currentConfig);
+            return JSON.stringify(BusClient.getConfig());
         },
-        /**
-         * @return {string}
-         */
         SetConfig: async function (newConfig) {
-            let status = await callback("update-config", newConfig);
-            if (status === 0) {
-                currentConfig = JSON.parse(newConfig);
-                return "SUCCESS";
-            } else {
-                return "ERROR";
+            try {
+                await BusClient.updateConfig(newConfig);
+            } catch (e) {
+                throw new Error("Error setting config");
             }
         },
         ReloadConfig: async function() {
-            currentConfig = await callback("reload-config");
+            try {
+                await BusClient.reloadConfig();
+            } catch (e) {
+                throw new Error("Error reloading config");
+            }
         },
         /**
          * @return {string}
          */
-        GetDeckInfo: async function() {
-            return JSON.stringify(await callback("get-details"));
+        GetDeckInfo: function() {
+            return JSON.stringify(BusClient.getInfo());
         },
-        /**
-         * @return {string}
-         */
         SetPage: async function(page) {
-            return await callback("set-page", parseInt(page)) === 0 ? "SUCCESS" : "ERROR";
+            try {
+                await BusClient.setPage(page);
+            } catch (e) {
+                throw new Error("Error setting page");
+            }
         },
-        /**
-         * @return {string}
-         */
         CommitConfig: async function() {
-            return await callback("commit-config") === 0 ? "SUCCESS" : "ERROR";
+            try {
+                BusClient.commitConfig();
+            } catch (e) {
+                throw new Error("Error committing config");
+            }
         },
+
         emit: function () {
 
+        },
+
+        Page: function (page) {
+            this.emit('Page', page);
         }
     };
+
+    callback(iface);
 
     sessionBus.exportInterface(iface, objectPath, ifaceDesc);
 }
 
-
-module.exports.init = (config, cback) => {
-    currentConfig = config;
+/**
+ * @param client {DBusClient}
+ * @param cback {Function}
+ * @returns {void}
+ */
+module.exports = (client, cback) => {
+    BusClient = client;
     callback = cback;
-};
-
-module.exports.updatePage = (page) => {
-    iface.emit('Page', page);
 };

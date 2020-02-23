@@ -1,4 +1,3 @@
-const dbus = require("./dbus");
 const path = require('path');
 const sharp = require('sharp');
 const fs = require('fs');
@@ -8,6 +7,7 @@ const homeDir = require('os').homedir();
 const {createCanvas} = require('canvas');
 const usbDetect = require("usb-detection");
 let handlers = require("./handlers.json");
+let dbus = require("./dbus.js");
 
 process.title = "streamdeckd";
 
@@ -127,7 +127,6 @@ function registerEventListeners(myStreamDeck) {
             return;
         if (keyPressed.hasOwnProperty("switch_page") && keyPressed.switch_page != null && keyPressed.switch_page > 0) {
             await setCurrentPage(keyPressed.switch_page - 1);
-            dbus.updatePage(keyPressed.switch_page - 1);
         }
         if (keyPressed.hasOwnProperty("command") && keyPressed.command != null && keyPressed.command !== "") {
             cp.spawn(keyPressed.command, [], {detached: true, shell: true}).unref();
@@ -284,7 +283,12 @@ async function generateBuffer(icon = __dirname + "/blank.png", text, index) {
             input: Buffer.from(textSVG),
         }]);
     }
-    buf = await buf.flip().flop().jpeg({quality: 100, chromaSubsampling: "4:4:4"}).toBuffer();
+    try {
+        buf = await buf.flip().flop().jpeg({quality: 100, chromaSubsampling: "4:4:4"}).toBuffer();
+    } catch (e) {
+        console.log(e);
+        throw e;
+    }
     return myStreamDeck.generateFillImageWrites(index, buf);
 }
 
@@ -309,6 +313,8 @@ async function setCurrentPage(i = 0) {
     currentPageIndex = i;
     currentPage = config.pages[currentPageIndex];
     renderCurrentPage(currentPage);
+    client.emitPage(i);
+
 }
 
 function setConfigIcon(page, index, buffer) {
@@ -320,52 +326,24 @@ function setConfigIcon(page, index, buffer) {
 
 registerReconnectInterval();
 
-dbus.init(rawConfig, async (command, arg) => {
-    let newConfig;
-    let configDiff;
-    let newRawConfig;
-    switch (command) {
-        case "update-config":
-            newConfig = JSON.parse(arg);
-            newRawConfig = JSON.parse(JSON.stringify(newConfig));
-            configDiff = diffConfig(newConfig);
-            config = newConfig;
-            rawConfig = newRawConfig;
-            await updateBuffers(configDiff);
-            return 0;
-        case "reload-config":
-            newConfig = JSON.parse(fs.readFileSync(configPath).toString());
-            newRawConfig = JSON.parse(JSON.stringify(newConfig));
-            configDiff = diffConfig(newConfig);
-            config = newConfig;
-            rawConfig = newRawConfig;
-            await updateBuffers(configDiff);
-            return config;
-        case "get-details":
-            return {
-                icon_size: myStreamDeck.ICON_SIZE,
-                rows: myStreamDeck.KEY_ROWS,
-                cols: myStreamDeck.KEY_COLUMNS,
-                page: currentPageIndex
-            };
-        case "set-page":
-            await setCurrentPage(arg);
-            return 0;
-        case "commit-config":
-            fs.writeFileSync(configPath, JSON.stringify(rawConfig));
-            return 0;
-        default:
-            return;
-    }
-});
-
 class DBusClient {
-    constructor() {
 
+     constructor() {
+        dbus(this, (client) => {
+            this.client = client;
+        });
+    }
+
+    emitPage(page) {
+        this.client.Page(page);
+    }
+
+    getConfig() {
+        return rawConfig;
     }
 
     async updateConfig(newConfig) {
-        newConfig = JSON.parse(arg);
+        newConfig = JSON.parse(newConfig);
         let newRawConfig = JSON.parse(JSON.stringify(newConfig));
         let configDiff = diffConfig(newConfig);
         config = newConfig;
@@ -384,7 +362,7 @@ class DBusClient {
         return config;
     }
 
-    getConfig() {
+    getInfo() {
         return {
             icon_size: myStreamDeck.ICON_SIZE,
             rows: myStreamDeck.KEY_ROWS,
@@ -393,8 +371,8 @@ class DBusClient {
         };
     }
 
-    async setPage() {
-        await setCurrentPage(arg);
+    async setPage(page) {
+        await setCurrentPage(page);
         return 0;
     }
 
@@ -403,3 +381,5 @@ class DBusClient {
         return 0;
     }
 }
+
+let client = new DBusClient();
