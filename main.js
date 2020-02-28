@@ -39,7 +39,7 @@ if (!fs.existsSync(configPath)) {
 }
 
 if (config.hasOwnProperty("handlers")) {
-    handlers = {...handlers, ...config.handlers}
+    handlers = {...config.handlers, ...handlers}
 }
 
 Object.keys(handlers).forEach(handler => {
@@ -47,6 +47,8 @@ Object.keys(handlers).forEach(handler => {
 });
 
 let rawConfig = JSON.parse(JSON.stringify(config));
+
+rawConfig.handlers = handlers;
 
 let buffersGenerated = false;
 
@@ -180,22 +182,22 @@ function registerEventListeners(myStreamDeck) {
 function diffConfig(newConfig) {
     let diff = [];
     if (JSON.stringify(newConfig) === JSON.stringify(rawConfig)) {
-        for (let i = 0; i < newConfig.length; i++) {
-            newConfig[i] = config.pages[i];
+        for (let i = 0; i < newConfig.pages.length; i++) {
+            newConfig.pages[i] = config.pages[i];
         }
         return [];
     }
-    for (let i = 0; i < newConfig.length; i++) {
+    for (let i = 0; i < newConfig.pages.length; i++) {
         let diffPage = [];
         if (i >= rawConfig.length) {
-            diffPage = newConfig[i];
-        } else if (JSON.stringify(newConfig[i]) !== JSON.stringify(rawConfig[i])) {
-            for (let j = 0; j < newConfig[i].length; j++) {
+            diffPage = newConfig.pages[i];
+        } else if (JSON.stringify(newConfig.pages[i]) !== JSON.stringify(rawConfig.pages[i])) {
+            for (let j = 0; j < newConfig.pages[i].length; j++) {
                 let diffCell = {};
-                if (j >= newConfig[i].length || JSON.stringify(newConfig[i][j]) !== JSON.stringify(rawConfig[i][j])) {
-                    diffCell = newConfig[i][j];
+                if (j >= newConfig.pages[i].length || JSON.stringify(newConfig.pages[i][j]) !== JSON.stringify(rawConfig.pages[i][j])) {
+                    diffCell = newConfig.pages[i][j];
                 } else {
-                    newConfig[i][j] = config.pages[i][j];
+                    newConfig.pages[i][j] = config.pages[i][j];
                     diffCell = config.pages[i][j];
                 }
                 if (config.pages[i][j].hasOwnProperty("iconHandler")) {
@@ -204,7 +206,7 @@ function diffConfig(newConfig) {
                 diffPage.push(diffCell);
             }
         } else {
-            newConfig[i] = config.pages[i];
+            newConfig.pages[i] = config.pages[i];
         }
         diff.push(diffPage);
     }
@@ -235,7 +237,8 @@ async function updateBuffers(config) {
         for (let j = 0; j < config[i].length; j++) {
             let key = config[i][j];
             if (key.hasOwnProperty("iconHandler")) {
-                key.iconHandler.cleanup();
+                if (key.iconHandler.cleanup)
+                    key.iconHandler.cleanup();
                 delete key.iconHandler;
             }
             if (key.hasOwnProperty("icon_handler")) {
@@ -328,7 +331,7 @@ registerReconnectInterval();
 
 class DBusClient {
 
-     constructor() {
+    constructor() {
         dbus(this, (client) => {
             this.client = client;
         });
@@ -349,17 +352,12 @@ class DBusClient {
         config = newConfig;
         rawConfig = newRawConfig;
         await updateBuffers(configDiff);
+        rawConfig.handlers = {...handlers, ...rawConfig.handlers};
         return 0;
     }
 
     async reloadConfig() {
-        let newConfig = JSON.parse(fs.readFileSync(configPath).toString());
-        let newRawConfig = JSON.parse(JSON.stringify(newConfig));
-        let configDiff = diffConfig(newConfig);
-        config = newConfig;
-        rawConfig = newRawConfig;
-        await updateBuffers(configDiff);
-        return config;
+        return await this.updateConfig(fs.readFileSync(configPath).toString());
     }
 
     getInfo() {

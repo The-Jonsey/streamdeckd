@@ -1,14 +1,23 @@
 {
   "Spotify": {
-    "script_path": "./spotify-handler.js"
+    "script_path": "./spotify-handler.js",
+    "types": ["icon"]
   },
   "Time": {
-    "script_path": "./time-handler.js"
+    "script_path": "./time-handler.js",
+    "types": ["icon"]
   },
   "Gif": {
     "script_path": "./gif-handler",
-    "iconFields": [
-      "icon"
-    ]
+    "types": ["key", "icon"],
+    "iconFields": {
+      "text": {
+        "type": "text"
+      },
+      "icon": {
+        "type": "file",
+	    "accept": ".gif"
+      }
+    }
   }
 }
