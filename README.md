@@ -5,7 +5,7 @@
 ### Installation  
   
 As this uses the [Elgato Stream Deck Library](https://www.npmjs.com/package/elgato-stream-deck), you will need to follow   
-the installation process for that, which includes setting up allowing node to access the streamdeck via udev. to set this up:  
+the installation process for that, which includes taking steps to allow node to access the streamdeck via udev. these steps include:  
   
 - create the file `/etc/udev/rules.d/50-elgato.rules` with the following config  
 ```  
@@ -18,7 +18,7 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="006d", MODE:="666"
   
 - run `sudo udevadm control --reload-rules` to reload the udev rules  
   
-Then xdotool will be required to simulate keypress. to install this run:  
+Then xdotool will be required to simulate keypresses, to install this run:  
   
 #### Arch  
   
@@ -39,7 +39,7 @@ run `streamdeckd` to start the daemon and add to your desktop environments start
 
 ### Configuration
 
-There are 2 ways to configure streamdeckd
+There are two ways to configure streamdeckd
 
 #### Graphical Configuration
 
@@ -67,15 +67,14 @@ An example config would be something like:
 
 The outer array is the list of pages, the inner array is the list of button on that page, with the buttons going in a right to left order.
 
-The `switch_page` is the action of the button, to switch the active page to the indicated page, in this case, 1.
-
-The other types of actions you can have on a button are:
+The actions you can have on a button are:
 
 - `command`: runs a native shell command, something like `notify-send "Hello World"`
 - `keybind`: simulates the indicated keybind via xdtotool
 - `url`: opens a url in your default browser via xdg
 - `brightness`: set the brightness of the streamdeck as a percentage
 - `write`: Write out a provided string via xdotool
+- `switch_page`: change the active page on the streamdeck
 
 #### Handlers
 
@@ -104,7 +103,7 @@ The config for custom handlers can be written as:
 }
 ```
 
-the fields are as listed below:
+The fields are as listed below:
 
 - `script_path`: The path of the handler script
 - `types`: The types of actions it is available for, `key` is for on keypress, `icon` is for controlling the image shown on the key's screen
@@ -139,15 +138,15 @@ There is a D-Bus interface built into the daemon, the service name and interface
 
 ### Writing custom handlers
 
-to write a custom handler, you create a js file where the module.exports includes (where applicable):
+To write a custom handler, you create a js file where the module.exports includes (where applicable):
 
-a class under module.exports.icon to handle the icon shown on the streamdeck, the fields passed to the constructor are:
+A class under module.exports.icon to handle the icon shown on the streamdeck, the fields passed to the constructor are:
 
 - The current page number
 - The index of the button on the page
 - Methods to generate an image buffer and set the icon on the screen
 
-and a function under module.exports.key to handle the event of a key being pressed, the fields passed to the function are:
+A function under module.exports.key to handle the event of a key being pressed, the fields passed to the function are:
 
 - The current page number
 - The index of the button on the page
