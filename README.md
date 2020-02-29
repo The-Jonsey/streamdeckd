@@ -27,8 +27,10 @@ Then xdotool will be required to simulate keypress. to install this run:
 #### Debian based  
   
 `sudo apt install xdotool`   
-Then to install this package run:  
-  
+
+
+#### Then to install this package run:  
+
 `sudo npm install -g streamdeckd`  
   
 ### Usage  
@@ -50,14 +52,17 @@ The configuration file streamdeckd uses is a JSON file found at `~/.streamdeck-c
 An example config would be something like:
 
 ```json
-[
-  [
-    {
-      "switch_page": 1,
-      "icon": "~/icon.png"
-    }
+{
+  "handlers": {},
+  "pages": [
+    [
+      {
+        "switch_page": 1,
+        "icon": "~/icon.png"
+      }
+    ]
   ]
-]
+}
 ```
 
 The outer array is the list of pages, the inner array is the list of button on that page, with the buttons going in a right to left order.
@@ -72,6 +77,41 @@ The other types of actions you can have on a button are:
 - `brightness`: set the brightness of the streamdeck as a percentage
 - `write`: Write out a provided string via xdotool
 
+#### Handlers
+
+The config for custom handlers can be written as:
+
+```json
+{
+  "Gif": {
+    "script_path": "./gif-handler",
+    "types": ["key", "icon"],
+    "iconFields": {
+      "text": {
+        "type": "text"
+      },
+      "icon": {
+        "type": "file",
+	    "accept": ".gif"
+      }
+    },
+    "keyFields": {
+      "command": {
+        "type": "text"
+      }
+    }
+  }
+}
+```
+
+the fields are as listed below:
+
+- `script_path`: The path of the handler script
+- `types`: The types of actions it is available for, `key` is for on keypress, `icon` is for controlling the image shown on the key's screen
+- `icon/keyFields`: The fields to show on the editor for if it is being used for key/icon
+    - `type`: The type of field to be shown, currently limited to file and text
+    - `accept`: Only applicable to file inputs, a comma separated list of file extensions to accept
+
 ### D-Bus
 
 There is a D-Bus interface built into the daemon, the service name and interface for D-Bus are `com.thejonsey.streamdeck` and `com/thejonsey/streamdeck` respectively, and is made up of the following methods/signals
@@ -79,19 +119,36 @@ There is a D-Bus interface built into the daemon, the service name and interface
 #### Methods
 
 - GetConfig  - returns the current running config
-- SetConfig  - sets the config, without saving to disk, takes in Stringified json, and returns `SUCCESS` and `ERROR` if something went wrong
+- SetConfig  - sets the config, without saving to disk, takes in Stringified json, returns an error if anything breaks
 - ReloadConfig  - reloads the config from disk
 - GetDeckInfo  - Returns information about the active streamdeck in the format of 
 ```json
 {
   "icon_size": 72,
   "rows": 3,
-  "cols": 5
+  "cols": 5,
+  "page": 0
 }
 ```
-- SetPage - Set the page on the streamdeck to the number passed to it and returns `SUCCESS` and `ERROR` if something went wrong
-- CommitConfig  - Commits the currently active config to disk, returns `SUCCESS` and `ERROR` if something went wrong
+- SetPage - Set the page on the streamdeck to the number passed to it, returns an error if anything breaks
+- CommitConfig  - Commits the currently active config to disk, returns an error if anything breaks
 
 #### Signals
 
 - Page - sends the number of the page switched to on the StreamDeck
+
+### Writing custom handlers
+
+to write a custom handler, you create a js file where the module.exports includes (where applicable):
+
+a class under module.exports.icon to handle the icon shown on the streamdeck, the fields passed to the constructor are:
+
+- The current page number
+- The index of the button on the page
+- Methods to generate an image buffer and set the icon on the screen
+
+and a function under module.exports.key to handle the event of a key being pressed, the fields passed to the function are:
+
+- The current page number
+- The index of the button on the page
+- The object of the key, as defined in the config, it may have additional fields as defined by the icon handler
