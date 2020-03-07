@@ -1,5 +1,6 @@
 const path = require('path');
-const sharp = require('sharp');
+const jimp = require('jimp');
+const svg2img = require("svg2img");
 const fs = require('fs');
 const StreamDeck = require('elgato-stream-deck');
 const cp = require('child_process');
@@ -275,23 +276,22 @@ async function generateBuffer(icon = __dirname + "/blank.png", text, index) {
         <text x="50%" y="50%" textLength="72px" transform="rotate(180 36,36)" dominant-baseline="central"
         text-anchor="middle" alignment-baseline="central" baseline-shift="` + ((100 - calculateFontSize(text)) / 2) + `%"
         style="width: 72px; fill:white; stroke: black; stroke-width: 0.5; font-weight: bold; font-size: `
-            + calculateFontSize(text) + `%; font-family: sans-serif">` + text + `</text></svg>`;
+            + (calculateFontSize(text) * 0.12) + `px; font-family: sans-serif">` + text + `</text></svg>`;
     }
-    // noinspection JSUnresolvedFunction
-    let buf = await sharp(image)
-        .flatten()
-        .resize(72, 72);
+    let buf = await jimp.read(image);
+    buf.resize(72, 72);
     if (text) {
-        buf = await buf.composite([{
-            input: Buffer.from(textSVG),
-        }]);
+        let textBuf = await svgtoimg(textSVG);
+        textBuf = await jimp.read(textBuf);
+        textBuf.resize(72, 72).quality(100)
+            .flip(false, true)
+            .flip(true, false);
+        buf.composite(textBuf, 0, 0);
     }
-    try {
-        buf = await buf.flip().flop().jpeg({quality: 100, chromaSubsampling: "4:4:4"}).toBuffer();
-    } catch (e) {
-        console.log(e);
-        throw e;
-    }
+    buf.quality(100)
+        .flip(false, true)
+        .flip(true, false);
+    buf = await buf.getBufferAsync(jimp.MIME_JPEG);
     return myStreamDeck.generateFillImageWrites(index, buf);
 }
 
@@ -300,6 +300,16 @@ async function restartHandlers() {
         if (!handler.interval && handler.hasOwnProperty("startLoop"))
             handler.startLoop();
     }
+}
+
+function svgtoimg(svgString) {
+    return new Promise((resolve, reject) => {
+        svg2img(svgString, (err, buff) => {
+            if (err)
+                reject(err);
+            resolve(buff);
+        });
+    })
 }
 
 function calculateFontSize(text) {

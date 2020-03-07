@@ -27,14 +27,19 @@
   },
   "homepage": "https://github.com/the-jonsey/streamdeckd#readme",
   "dependencies": {
+    "@jimp/bmp": "^0.9.5",
+    "@jimp/gif": "^0.9.5",
+    "@jimp/jpeg": "^0.9.5",
+    "@jimp/png": "^0.9.5",
     "canvas": "^2.6.1",
     "daemonize-process": "^2.0.1",
     "dbus-native": "^0.4.0",
     "elgato-stream-deck": "^3.3.0",
     "gif-frames": "^1.0.1",
+    "jimp": "^0.9.5",
     "ps-node": "^0.1.6",
     "request": "latest",
-    "sharp": "^0.24.0",
+    "svg2img": "^0.6.1",
     "usb-detection": "^4.7.0"
   }
 }
