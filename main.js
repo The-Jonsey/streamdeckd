@@ -5,7 +5,7 @@ const fs = require('fs');
 const StreamDeck = require('elgato-stream-deck');
 const cp = require('child_process');
 const homeDir = require('os').homedir();
-const {createCanvas} = require('canvas');
+const pixelWidth = require('string-pixel-width');
 const usbDetect = require("usb-detection");
 let handlers = require("./handlers.json");
 let dbus = require("./dbus.js");
@@ -62,7 +62,7 @@ let interval;
 
 usbDetect.startMonitoring();
 
-process.stdin.resume();
+//process.stdin.resume();
 
 usbDetect.on("add:4057", async () => {
     await attemptConnection();
@@ -291,7 +291,11 @@ async function generateBuffer(icon =  path.join(__dirname, "blank.png"), text, i
     buf.resize(72, 72);
     if (text) {
         let textBuf = await svgtoimg(textSVG);
-        textBuf = await jimp.read(textBuf);
+        try {
+            textBuf = await jimp.read(textBuf);
+        } catch (e) {
+            console.log(e);
+        }
         textBuf.resize(72, 72).quality(100)
             .flip(false, true)
             .flip(true, false);
@@ -322,11 +326,7 @@ function svgtoimg(svgString) {
 }
 
 function calculateFontSize(text) {
-    let fontFamily = "16px sans-serif";
-    const canvas = createCanvas(72, 72);
-    const context = canvas.getContext('2d');
-    context.font = fontFamily;
-    let width = context.measureText(text).width;
+    let width = pixelWidth(text, { size: 16 });
     let size = (1 / (width / 72)) * 100;
     return size < 500 ? size > 50 ? size : 50 : 500;
 }
