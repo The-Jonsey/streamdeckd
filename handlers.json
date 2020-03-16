@@ -8,7 +8,7 @@
     "types": ["icon"]
   },
   "Gif": {
-    "script_path": "./gif-handler",
+    "script_path": "./gif-handler.js",
     "types": ["key", "icon"],
     "iconFields": {
       "text": {

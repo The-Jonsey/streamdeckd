@@ -9,6 +9,12 @@ const {createCanvas} = require('canvas');
 const usbDetect = require("usb-detection");
 let handlers = require("./handlers.json");
 let dbus = require("./dbus.js");
+let detectionNode = require("usb-detection/build/Release/detection.node");
+let canvasNode = require("canvas/build/Release/canvas");
+let hidNode = require("node-hid/build/Release/HID.node");
+handlers.Spotify.import = require("./spotify-handler.js");
+handlers.Gif.import = require("./gif-handler.js");
+handlers.Time.import = require("./time-handler.js");
 
 process.title = "streamdeckd";
 
@@ -40,12 +46,11 @@ if (!fs.existsSync(configPath)) {
 }
 
 if (config.hasOwnProperty("handlers")) {
+    Object.keys(config.handlers).forEach(handler => {
+        config.handlers[handler].import = require(config.handlers[handler].script_path);
+    });
     handlers = {...config.handlers, ...handlers}
 }
-
-Object.keys(handlers).forEach(handler => {
-    handlers[handler].import = require(handlers[handler].script_path);
-});
 
 let rawConfig = JSON.parse(JSON.stringify(config));
 
@@ -236,20 +241,24 @@ function setImage(buffer) {
 async function updateBuffers(config) {
     for (let i = 0; i < config.length; i++) {
         for (let j = 0; j < config[i].length; j++) {
-            let key = config[i][j];
-            if (key.hasOwnProperty("iconHandler")) {
-                if (key.iconHandler.cleanup)
-                    key.iconHandler.cleanup();
-                delete key.iconHandler;
+            try {
+                let key = config[i][j];
+                if (key.hasOwnProperty("iconHandler")) {
+                    if (key.iconHandler.cleanup)
+                        key.iconHandler.cleanup();
+                    delete key.iconHandler;
+                }
+                if (key.hasOwnProperty("icon_handler")) {
+                    let handler = handlers[key.icon_handler].import.icon;
+                    handler = new handler(i, j, generateBuffer, setConfigIcon, key);
+                    externalImageHandlers.push(handler);
+                    key.iconHandler = handler;
+                    continue;
+                }
+                config[i][j].buffer = await generateBuffer(key.icon, key.text, j);
+            } catch (e) {
+                console.log(e);
             }
-            if (key.hasOwnProperty("icon_handler")) {
-                let handler = handlers[key.icon_handler].import.icon;
-                handler = new handler(i, j, generateBuffer, setConfigIcon, key);
-                externalImageHandlers.push(handler);
-                key.iconHandler = handler;
-                continue;
-            }
-            config[i][j].buffer = await generateBuffer(key.icon, key.text, j);
         }
     }
     await setCurrentPage(0);
@@ -262,7 +271,7 @@ async function generateBuffers() {
     buffersGenerated = true;
 }
 
-async function generateBuffer(icon = __dirname + "/blank.png", text, index) {
+async function generateBuffer(icon =  path.join(__dirname, "blank.png"), text, index) {
     let image;
     if (icon === "")
         icon = __dirname + "/blank.png";

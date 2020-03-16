@@ -16,6 +16,13 @@
     "Stream",
     "Deck"
   ],
+  "pkg": {
+    "scripts": "*.js",
+    "assets": [
+      "handlers.json",
+      "blank.png"
+    ]
+  },
   "author": "The-Jonsey",
   "license": "GPL-3.0",
   "repository": {
@@ -40,6 +47,10 @@
     "ps-node": "^0.1.6",
     "request": "latest",
     "svg2img": "^0.6.1",
-    "usb-detection": "^4.7.0"
+    "usb-detection": "^4.7.0",
+    "node-hid": "^1.2.0"
+  },
+  "devDependencies": {
+    "pkg": "github:geekuillaume/pkg"
   }
 }
