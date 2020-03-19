@@ -45,7 +45,6 @@
     "elgato-stream-deck": "^3.3.0",
     "gif-frames": "^1.0.1",
     "jimp": "^0.9.5",
-    "libjpeg": "^3.0.0",
     "node-hid": "^1.2.0",
     "ps-node": "^0.1.6",
     "request": "latest",

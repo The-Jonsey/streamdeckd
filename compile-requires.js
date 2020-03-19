@@ -29,4 +29,3 @@ fs.readFileSync(path.join(__dirname, ("node_modules/canvas/build/Release/libz.so
 let detectionNode = require("usb-detection/build/Release/detection.node");
 let canvasNode = require("canvas/build/Release/canvas.node");
 let hidNode = require("node-hid/build/Release/HID.node");
-let libJpegNode = require("libjpeg/build/Release/jpeg.node");
