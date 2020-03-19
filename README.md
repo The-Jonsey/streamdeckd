@@ -7,13 +7,13 @@
 As this uses the [Elgato Stream Deck Library](https://www.npmjs.com/package/elgato-stream-deck), you will need to follow   
 the installation process for that, which includes taking steps to allow node to access the streamdeck via udev. these steps include:  
   
-- create the file `/etc/udev/rules.d/50-elgato.rules` with the following config  
+- create the file `/etc/udev/rules.d/50-elgato.rules` with the following config, replacing username with your username 
 ```  
 SUBSYSTEM=="input", GROUP="input", MODE="0666"  
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0060", MODE:="666", GROUP="plugdev"  
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0063", MODE:="666", GROUP="plugdev"  
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="006c", MODE:="666", GROUP="plugdev"  
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="006d", MODE:="666", GROUP="plugdev"  
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0060", MODE:="666", GROUP="username"  TAG+="uaccess" 
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0063", MODE:="666", GROUP="username"  TAG+="uaccess" 
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="006c", MODE:="666", GROUP="username"  TAG+="uaccess" 
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="006d", MODE:="666", GROUP="username"  TAG+="uaccess" 
 ```  
   
 - run `sudo udevadm control --reload-rules` to reload the udev rules  

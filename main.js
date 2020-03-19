@@ -9,9 +9,7 @@ const pixelWidth = require('string-pixel-width');
 const usbDetect = require("usb-detection");
 let handlers = require("./handlers.json");
 let dbus = require("./dbus.js");
-let detectionNode = require("usb-detection/build/Release/detection.node");
-let canvasNode = require("canvas/build/Release/canvas");
-let hidNode = require("node-hid/build/Release/HID.node");
+let compileRequires = require("./compile-requires.js");
 handlers.Spotify.import = require("./spotify-handler.js");
 handlers.Gif.import = require("./gif-handler.js");
 handlers.Time.import = require("./time-handler.js");
@@ -288,7 +286,7 @@ async function generateBuffer(icon =  path.join(__dirname, "blank.png"), text, i
             + (calculateFontSize(text) * 0.12) + `px; font-family: sans-serif">` + text + `</text></svg>`;
     }
     let buf = await jimp.read(image);
-    buf.resize(72, 72);
+    buf.contain(72, 72).quality(100);
     if (text) {
         let textBuf = await svgtoimg(textSVG);
         try {
@@ -296,13 +294,12 @@ async function generateBuffer(icon =  path.join(__dirname, "blank.png"), text, i
         } catch (e) {
             console.log(e);
         }
-        textBuf.resize(72, 72).quality(100)
+        textBuf.contain(72, 72).quality(100)
             .flip(false, true)
             .flip(true, false);
         buf.composite(textBuf, 0, 0);
     }
-    buf.quality(100)
-        .flip(false, true)
+    buf.flip(false, true)
         .flip(true, false);
     buf = await buf.getBufferAsync(jimp.MIME_JPEG);
     return myStreamDeck.generateFillImageWrites(index, buf);
