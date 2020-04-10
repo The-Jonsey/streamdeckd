@@ -17,10 +17,14 @@
     "Deck"
   ],
   "pkg": {
-    "scripts": "*.js",
+    "scripts": [
+      "*.js",
+      "node_modules/canvas/build/Release/*.so.*"
+    ],
     "assets": [
       "handlers.json",
-      "blank.png"
+      "blank.png",
+      "node_modules/canvas/build/Release/*.so.*"
     ]
   },
   "author": "The-Jonsey",
@@ -38,17 +42,18 @@
     "@jimp/gif": "^0.9.5",
     "@jimp/jpeg": "^0.9.5",
     "@jimp/png": "^0.9.5",
+    "canvas": "^2.6.1",
     "daemonize-process": "^2.0.1",
     "dbus-native": "^0.4.0",
     "elgato-stream-deck": "^3.3.0",
     "gif-frames": "^1.0.1",
     "jimp": "^0.9.5",
+    "node-hid": "^1.2.0",
     "ps-node": "^0.1.6",
     "request": "latest",
     "string-pixel-width": "^1.10.0",
     "svg2img": "^0.6.1",
-    "usb-detection": "^4.7.0",
-    "node-hid": "^1.2.0"
+    "usb-detection": "^4.7.0"
   },
   "devDependencies": {
     "pkg": "github:geekuillaume/pkg"

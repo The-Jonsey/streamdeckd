@@ -45,6 +45,9 @@ module.exports.icon = class SpotifyHandler {
                     }
                     try {
                         let url = str[1][0][2][1][1][0];
+                        if (typeof url !== "string")
+                            return;
+                        url = url.replace("https://open.spotify.com/image/", "https://i.scdn.co/image/");
                         if (url !== this.currentURL) {
                             this.key.icon = url;
                             request(url, {encoding: null, headers: {

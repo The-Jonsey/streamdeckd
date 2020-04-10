@@ -9,9 +9,8 @@ const pixelWidth = require('string-pixel-width');
 const usbDetect = require("usb-detection");
 let handlers = require("./handlers.json");
 let dbus = require("./dbus.js");
-let detectionNode = require("usb-detection/build/Release/detection.node");
-let canvasNode = require("canvas/build/Release/canvas");
-let hidNode = require("node-hid/build/Release/HID.node");
+const createCanvas = require("canvas").createCanvas;
+let compileRequires = require("./compile-requires.js");
 handlers.Spotify.import = require("./spotify-handler.js");
 handlers.Gif.import = require("./gif-handler.js");
 handlers.Time.import = require("./time-handler.js");
@@ -71,23 +70,23 @@ usbDetect.on("add:4057", async () => {
 function registerReconnectInterval() {
     if (!interval)
         interval = setInterval(async () => {
-            console.log("Interval");
-            if (!connected && !attemptingConnection) {
+            log("Interval");
+            if (connected) {
+                clearInterval(interval);
+                interval = undefined;
+            } else if (!attemptingConnection) {
                 if (await attemptConnection()) {
                     clearInterval(interval);
                     interval = undefined;
                 }
-            } else if (connected) {
-                clearInterval(interval);
-                interval = undefined;
             }
-        }, 500);
+        }, 1500);
 }
 
 async function attemptConnection() {
-    console.log("Attempt");
+    log("Attempt");
     attemptingConnection = true;
-    console.log("Attempting Connection");
+    log("Attempting Connection");
     for (let handler of externalImageHandlers) {
         if (handler.hasOwnProperty("stopLoop"))
             handler.stopLoop();
@@ -95,33 +94,43 @@ async function attemptConnection() {
     try {
         let decks = StreamDeck.listStreamDecks();
         if (decks.length === 0) {
+            log("No decks found");
             myStreamDeck = null;
         } else {
             myStreamDeck = StreamDeck.openStreamDeck(decks[0].path);
+            log("Connecting to: " + JSON.stringify(decks[0]));
+            log(myStreamDeck.getFirmwareVersion());
             registerEventListeners(myStreamDeck);
         }
         if (myStreamDeck !== null) {
+            log("myStreamDeck connected");
             if (!buffersGenerated) {
                 while (externalImageHandlers.length > 0) {
+                    log("Clearing external handlers");
                     let handler = externalImageHandlers[0];
                     if (handler.hasOwnProperty("cleanup"))
                         handler.cleanup();
                     externalImageHandlers.shift();
                 }
                 buffersGenerated = false;
+                log("Generating buffers");
                 await generateBuffers();
             }
+            log("Restarting handlers");
             await restartHandlers();
             connected = true;
             attemptingConnection = false;
+            log("Setting current page");
             renderCurrentPage(currentPage);
             return true;
         } else {
+            log("myStreamDeck was null");
             attemptingConnection = false;
             return false;
         }
     } catch (e) {
         attemptingConnection = false;
+        log(e);
         return false;
     }
 }
@@ -155,7 +164,8 @@ function registerEventListeners(myStreamDeck) {
             handlers[keyPressed.key_handler].import.key(currentPageIndex, keyIndex, keyPressed);
         }
     });
-    myStreamDeck.on("error", () => {
+    myStreamDeck.on("error", (e) => {
+        log(e);
         myStreamDeck.close();
         for (let handler of externalImageHandlers) {
             if (handler.hasOwnProperty("stopLoop"))
@@ -172,7 +182,8 @@ function registerEventListeners(myStreamDeck) {
 }
 
 [`exit`, `SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`].forEach((eventType) => {
-    process.on(eventType, (() => {
+    process.on(eventType, ((e) => {
+        log(e);
         if (connected) {
             try {
                 myStreamDeck.resetToLogo();
@@ -220,19 +231,23 @@ function diffConfig(newConfig) {
 }
 
 function renderCurrentPage(page) {
+    log("Rendering: " + currentPageIndex);
     if (page.length < myStreamDeck.KEY_ROWS * myStreamDeck.KEY_COLUMNS) {
         for (let x = page.length; x < myStreamDeck.KEY_ROWS * myStreamDeck.KEY_COLUMNS; x++) {
             page[x] = {};
         }
     }
-    for (let key of page) {
+    for (let x = 0; x < page.length; x++) {
+        let key = page[x];
+        log("Rendering: " + currentPageIndex + ":" + x);
         if (key.hasOwnProperty("buffer") && key.buffer) {
-            setImage(key.buffer);
+            //myStreamDeck.fillImage(x, key.buffer);
+            setImage(x, key.buffer);
         }
     }
 }
 
-function setImage(buffer) {
+function setImage(key, buffer) {
     buffer.forEach(packet => {
         myStreamDeck.device.write(packet);
     });
@@ -250,14 +265,15 @@ async function updateBuffers(config) {
                 }
                 if (key.hasOwnProperty("icon_handler")) {
                     let handler = handlers[key.icon_handler].import.icon;
-                    handler = new handler(i, j, generateBuffer, setConfigIcon, key);
+                    handler = new handler(i, myStreamDeck.transformKeyIndex(j), generateBuffer, setConfigIcon, key);
                     externalImageHandlers.push(handler);
                     key.iconHandler = handler;
                     continue;
                 }
-                config[i][j].buffer = await generateBuffer(key.icon, key.text, j);
+                log("Generating buffer for " + i + ":" + j);
+                config[i][j].buffer = await generateBuffer(key.icon, key.text, myStreamDeck.transformKeyIndex(j));
             } catch (e) {
-                console.log(e);
+                log(e);
             }
         }
     }
@@ -271,41 +287,53 @@ async function generateBuffers() {
     buffersGenerated = true;
 }
 
-async function generateBuffer(icon =  path.join(__dirname, "blank.png"), text, index) {
+async function generateBuffer(icon = path.join(__dirname, "blank.png"), text, index) {
     let image;
     if (icon === "")
         icon = __dirname + "/blank.png";
-    if (typeof icon === "string")
+    if (typeof icon === "string") {
         image = path.resolve(icon);
-    else
+        log("Loading: " + icon);
+    } else
         image = icon;
     let textSVG;
     if (text) {
-        textSVG = `<svg width="72" height="72" viewBox="0 0 72 72">
-        <text x="50%" y="50%" textLength="72px" transform="rotate(180 36,36)" dominant-baseline="central"
-        text-anchor="middle" alignment-baseline="central" baseline-shift="` + ((100 - calculateFontSize(text)) / 2) + `%"
-        style="width: 72px; fill:white; stroke: black; stroke-width: 0.5; font-weight: bold; font-size: `
-            + (calculateFontSize(text) * 0.12) + `px; font-family: sans-serif">` + text + `</text></svg>`;
-    }
-    let buf = await jimp.read(image);
-    buf.resize(72, 72);
-    if (text) {
-        let textBuf = await svgtoimg(textSVG);
-        try {
-            textBuf = await jimp.read(textBuf);
-        } catch (e) {
-            console.log(e);
+        log("Generating svg for: " + text);
+        if (text.toString() === "0") {
+            log("Here");
         }
-        textBuf.resize(72, 72).quality(100)
-            .flip(false, true)
-            .flip(true, false);
-        buf.composite(textBuf, 0, 0);
+        textSVG = `<svg width="${myStreamDeck.ICON_SIZE}" height="${myStreamDeck.ICON_SIZE}" viewBox="0 0 ${myStreamDeck.ICON_SIZE} ${myStreamDeck.ICON_SIZE}">
+        <text x="50%" y="50%" textLength="${myStreamDeck.ICON_SIZE}px" transform="rotate(180 36,36)" dominant-baseline="central"
+        text-anchor="middle" alignment-baseline="central" baseline-shift="` + (8 * (calculateFontSize(text) / 100)) * -1 + `%"
+        style="width: ${myStreamDeck.ICON_SIZE}px; fill:white; stroke: black; stroke-width: 0.5; font-weight: bold; font-size: `
+            + calculateFontSize(text) *0.12 + `px; font-family: sans-serif">` + text + `</text></svg>`;
     }
-    buf.quality(100)
-        .flip(false, true)
-        .flip(true, false);
-    buf = await buf.getBufferAsync(jimp.MIME_JPEG);
-    return myStreamDeck.generateFillImageWrites(index, buf);
+    log("Reading image");
+    try {
+        let buf = await jimp.read(image);
+        buf.contain(72, 72).quality(100);
+        log("Resizing image");
+        if (text) {
+            let textBuf = await svgtoimg(textSVG);
+            try {
+                textBuf = await jimp.read(textBuf);
+            } catch (e) {
+                log(e);
+            }
+            textBuf.contain(72, 72).quality(100)
+                .flip(false, true)
+                .flip(true, false);
+            buf.composite(textBuf, 0, 0);
+        }
+        log("Flipping image");
+        buf.flip(false, true)
+           .flip(true, false);
+        log("Generating fill image writes via streamdeck API");
+        return myStreamDeck.generateFillImageWrites(index, await buf.getBufferAsync(jimp.MIME_JPEG));
+    } catch (e) {
+        log(e);
+        throw e;
+    }
 }
 
 async function restartHandlers() {
@@ -326,7 +354,11 @@ function svgtoimg(svgString) {
 }
 
 function calculateFontSize(text) {
-    let width = pixelWidth(text, { size: 16 });
+    let fontFamily = "16px sans-serif";
+    const canvas = createCanvas(72, 72);
+    const context = canvas.getContext('2d');
+    context.font = fontFamily;
+    let width = context.measureText(text).width;
     let size = (1 / (width / 72)) * 100;
     return size < 500 ? size > 50 ? size : 50 : 500;
 }
@@ -342,11 +374,18 @@ async function setCurrentPage(i = 0) {
 function setConfigIcon(page, index, buffer) {
     config.pages[page][index].buffer = buffer;
     if (connected && page === currentPageIndex) {
-        setImage(buffer);
+        setImage(index, buffer);
     }
 }
 
-registerReconnectInterval();
+usbDetect.find(4057, async (err, devices) => {
+    log(devices);
+    if (devices.length) {
+        if (!(await attemptConnection())) {
+            registerReconnectInterval()
+        }
+    }
+});
 
 class DBusClient {
 
@@ -357,7 +396,8 @@ class DBusClient {
     }
 
     emitPage(page) {
-        this.client.Page(page);
+        if (this.client)
+            this.client.Page(page);
     }
 
     getConfig() {
@@ -400,3 +440,8 @@ class DBusClient {
 }
 
 let client = new DBusClient();
+
+let log = (message) => {
+    if (process.env.DEBUG)
+        console.log(message);
+};
