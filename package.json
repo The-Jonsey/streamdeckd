@@ -1,6 +1,6 @@
 {
   "name": "streamdeckd",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A nodejs streamdeck daemon with d-bus support",
   "main": "main.js",
   "scripts": {
