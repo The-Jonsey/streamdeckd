@@ -10,7 +10,6 @@ const usbDetect = require("usb-detection");
 let handlers = require("./handlers.json");
 let dbus = require("./dbus.js");
 const createCanvas = require("canvas").createCanvas;
-let compileRequires = require("./compile-requires.js");
 handlers.Spotify.import = require("./spotify-handler.js");
 handlers.Gif.import = require("./gif-handler.js");
 handlers.Time.import = require("./time-handler.js");
@@ -181,7 +180,7 @@ function registerEventListeners(myStreamDeck) {
     });
 }
 
-[`exit`, `SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`].forEach((eventType) => {
+[`SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`].forEach((eventType) => {
     process.on(eventType, ((e) => {
         log(e);
         if (connected) {
@@ -192,6 +191,8 @@ function registerEventListeners(myStreamDeck) {
             }
             myStreamDeck.close();
         }
+        usbDetect.stopMonitoring();
+        connected = true;
         process.exit(0);
     }).bind(null, eventType));
 });
@@ -206,7 +207,9 @@ function diffConfig(newConfig) {
     }
     for (let i = 0; i < newConfig.pages.length; i++) {
         let diffPage = [];
-        if (i >= rawConfig.length) {
+        if (i === 7)
+            console.log(i);
+        if (i >= rawConfig.pages.length) {
             diffPage = newConfig.pages[i];
         } else if (JSON.stringify(newConfig.pages[i]) !== JSON.stringify(rawConfig.pages[i])) {
             for (let j = 0; j < newConfig.pages[i].length; j++) {

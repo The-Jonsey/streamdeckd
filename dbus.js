@@ -62,7 +62,9 @@ function proceed() {
             try {
                 await BusClient.updateConfig(newConfig);
             } catch (e) {
-                throw new Error("Error setting config");
+                console.log(e.stackTrace);
+                throw e;
+                //throw new Error("Error setting config");
             }
         },
         ReloadConfig: async function() {
