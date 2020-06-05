@@ -5,7 +5,11 @@ const fs = require('fs');
 const StreamDeck = require('elgato-stream-deck');
 const cp = require('child_process');
 const homeDir = require('os').homedir();
-const pixelWidth = require('string-pixel-width');
+try {
+    const compileRequires = require("./compile-requires.js");
+} catch (e) {
+
+}
 const usbDetect = require("usb-detection");
 let handlers = require("./handlers.json");
 let dbus = require("./dbus.js");

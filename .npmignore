@@ -3,3 +3,4 @@ node_modules
 .github
 custom-handlers
 streamdeckd.service
+compile-requires.js
