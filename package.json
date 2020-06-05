@@ -4,7 +4,8 @@
   "description": "A nodejs streamdeck daemon with d-bus support",
   "main": "main.js",
   "scripts": {
-    "start": "node main.js"
+    "start": "node main.js",
+    "build": "pkg main.js --targets node8-linux-x64 -o streamdeckd"
   },
   "bin": {
     "streamdeckd": "./daemon.js"
