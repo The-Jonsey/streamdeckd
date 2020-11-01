@@ -1,6 +1,9 @@
 
-# Streamdeckd  
+# Streamdeckd
 ## A NodeJS Elgato Streamdeck controller daemon with d-bus support  
+
+# Deprecated
+## Please use [unix-streamdeck/streamdeckd](https://github.com/unix-streamdeck/streamdeckd) instead
   
 ### Installation  
   
